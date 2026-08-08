@@ -9,7 +9,7 @@ This project provides a technical breakdown of *why* certain rules fail in produ
 ---
 
 ## 📑 Table of Contents
-1. [The BRICKSTORM / APT29 O365 Suite: A Systemic Failure](#1-the-brickstorm--apt29-o365-suite-a-systemic-failure)
+1. [O365 Suite Alerting Failure for BRICKSTORM / APT29](#1-o365-suite-failures-for-brickstorm--apt29)
     - [Flaw 1: The "Outlook Mobile" Public Client Oversight](#flaw-1-the-outlook-mobile-public-client-oversight)
     - [Flaw 2: The Shared Mailbox Collision](#flaw-2-the-shared-mailbox-collision)
     - [Flaw 3: Grouping Logic Errors](#flaw-3-grouping-logic-errors)
@@ -20,9 +20,9 @@ This project provides a technical breakdown of *why* certain rules fail in produ
 
 ---
 
-## 1. The BRICKSTORM / APT29 O365 Suite: A Systemic Failure
+## 1. O365 Suite for BRICKSTORM / APT29
 
-Google released a suite of rules to detect bulk email exfiltration from Microsoft 365 Exchange Online by compromised Service Principals (techniques heavily used by APT29/Midnight Blizzard). 
+Google released a suite of rules to detect bulk email exfiltration from Microsoft 365 Exchange Online by compromised Service Principals ([techniques heavily used by APT29/Midnight Blizzard](https://cloud.google.com/blog/topics/threat-intelligence/brickstorm-espionage-campaign)). 
 
 The affected curated rules are:
 * `O365 Mailbox Access by Service Principal with Multiple User Agents`
