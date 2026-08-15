@@ -33,21 +33,19 @@ The affected curated rules are:
 
 ### ❌ Core Flaws in Google's Logic
 
-Google completely missed the mark on this entire suite of rules. They copy-pasted a fundamentally flawed logic across the detections, resulting in rules that trigger on standard employee behavior rather than actual threat actors.
+This suite of rules contains systemic logic mismatches between the stated objective and the YARA-L implementation, likely due to code reuse across the rule pack. The rules fail to properly distinguish between automated Service Principals and standard human activity, resulting in alerts that trigger on normal employee behavior.
 
-#### Flaw 1: Grouping Logic Contradiction (Biggest Logic Flaw)
-Despite the rule description explicitly stating: *"Detects a Service Principal with a single O365 session ID..."*, the YARA-L `match` section of the "Multiple User Agents" rule inexplicably groups by `$application_id` instead of the session ID (`$session_id`). It completely contradicts its own stated objective, aggregating unrelated human logins over a 3-hour window simply because they use the same application. This is a fundamental logic mismatch.
+#### Flaw 1: Grouping Logic Contradiction
+Despite the rule description explicitly stating: *"Detects a Service Principal with a single O365 session ID..."*, the YARA-L `match` section of the "Multiple User Agents" rule groups by `$application_id` instead of the session ID (`$session_id`). This completely contradicts the rule's stated objective, aggregating unrelated human logins over a 3-hour window simply because they use the same application. 
 
-#### Flaw 2: Outlook Mobile Public Client Oversight (Biggest Oversight)
-All three rules look for anomalous behavior (changing IPs, changing ASNs, changing User-Agents) tied to a specific `ClientAppId`. However, Google inexplicably failed to whitelist the official **Microsoft Outlook Mobile App** (`27922004-5251-4030-b22d-91ecd9a37ea4`).
-
-* **Technical Reality:** Outlook Mobile is a **Public Client** relying on Delegated Access (human credentials + MFA). Threat actors aiming for silent, automated bulk exfiltration require **Confidential Clients** (App-Only mode with secrets/certificates). 
-* **Impact:** Without excluding Outlook Mobile, a legitimate employee reading a shared mailbox on their iPhone, who then walks out of the office (switching from Corporate Wi-Fi to 4G Cellular), triggers the `Multiple ASNs` and `Multiple IPs` alerts. Different employees using iOS and Android to read the same departmental mailbox trigger the `Multiple User Agents` alert. 
+#### Flaw 2: Outlook Mobile Public Client Oversight
+The rules track anomalous behavioral patterns (changing IPs, ASNs, or User-Agents) tied to a specific `ClientAppId`. While Google includes an exclusion regex for several native Microsoft applications, they inexplicably omitted the most ubiquitous human mobile client: the **Microsoft Outlook Mobile App** (`27922004-5251-4030-b22d-91ecd9a37ea4`).
+* **Impact:** Without filtering out this Public Client, legitimate employees reading shared mailboxes from their smartphones who move between networks (e.g., switching from Wi-Fi to 4G) inherently trigger the `Multiple ASNs` and `Multiple IPs` alerts. Different employees using iOS and Android to check the same departmental mailbox trigger the `Multiple User Agents` alert.
 
 #### Flaw 3: Shared Mailbox Collision
-To identify "Service Principals", Google's code relies on this logic:
+To identify backend service accounts, Google's logic relies on this condition:
 `$e.principal.user.userid != $e.target.user.userid`
-* **Impact:** This condition simply checks if the actor is different from the mailbox owner. While true for backend apps, it is also perfectly true for **human employees accessing delegated/shared departmental mailboxes**. This generates massive noise on standard human traffic.
+* **Impact:** This condition simply checks if the actor ID is different from the target mailbox owner. While true for automated service principals, it is also standard behavior for **human employees accessing shared or departmental mailboxes** (e.g., an operator opening `info@company.com`). This design flaw generates massive noise on standard operational human traffic.
 
 ---
 
@@ -78,7 +76,7 @@ rule custom_ttp_o365_mailbox_access_by_service_principal_with_multiple_uas {
     $e.metadata.log_type = "OFFICE_365"
     $e.metadata.product_event_type = "MailItemsAccessed" nocase
     $e.target.application = "Exchange"
-    $e.security_result.detection_fields["RecordType"] = /^(2\vert{}50)$/ 
+    $e.security_result.detection_fields["RecordType"] = /^(2|50)$/
     
     // Extract actual Session ID and App ID
     $session_id = $e.network.session_id
@@ -105,7 +103,7 @@ rule custom_ttp_o365_mailbox_access_by_service_principal_with_multiple_uas {
 
   condition:
     // Triggers if the SAME session rotates 2+ User Agents
-    $e and$source_ua_dc >= 2
+    $e and $source_ua_dc >= 2
 }
 
 ```
