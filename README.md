@@ -1,11 +1,9 @@
 
 # Google SecOps (Chronicle) Curated Detections: Flaw Analysis & Tuning
 
-This repository documents architectural flaws, systemic logic errors, and tuning recommendations for native **Google SecOps (Chronicle) Curated Detections**. 
-
-While Google's Threat Intelligence (GCTI) provides excellent conceptual threat coverage (such as tracking APT29/BRICKSTORM campaigns), the raw YARA-L implementation of these curated rules often contains systemic design failures and fails to account for standard enterprise architectures. This leads to massive alert fatigue and useless false positives.
-
-This project provides a technical breakdown of *why* certain rules fail in production and offers optimized Custom Rules to replace them.
+This repository documents **actual code bugs, logic errors, and tuning strategies** for native **Google SecOps (Chronicle) Curated Detections**.
+While Google Threat Intelligence (GTIG) provides exceptional conceptual threat coverage (such as tracking APT29/BRICKSTORM campaigns), raw YARA-L implementations of curated rules sometimes suffer from genuine implementation bugs, such as grouping logic contradictions and hardcoded threshold variables. In real-world enterprise environments, this frequently leads to massive alert fatigue.
+This project analyzes *why* native rules break or flood the SOC, and shares optimized Custom Rules and patches to fix these bugs.
 
 ---
 
