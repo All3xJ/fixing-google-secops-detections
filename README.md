@@ -27,7 +27,8 @@ Google released a suite of rules to detect bulk email exfiltration from Microsof
 The affected curated rules are:
 * `O365 Mailbox Access by Service Principal with Multiple User Agents`
 * `O365 Multiple Mailboxes Accessed by Service Principal`
-* * `O365 Mailbox Access by Service Principal from Multiple ASNs`
+* `O365 Mailbox Access by Service Principal from Multiple ASNs`
+* `O365 Multiple Mailboxes Accessed via Microsoft Graph API`
 
 ### ❌ Core Flaws in Google's Logic
 
@@ -51,7 +52,13 @@ Despite the rule description explicitly stating: *"Detects a Service Principal w
 
 ### ✅ Tuned YARA-L Solutions for O365 Rules
 
-To fix these severe design flaws, we must disable the Curated Detections and deploy Custom Rules. The fixes involve:
+To fix these severe design flaws, you have two options depending on your operational needs:
+
+**Option 1: Native SIEM Exclusions (quick fix)**
+You do not necessarily have to disable the rules or write custom code. You can simply create an **Exclusion** directly within the Google SecOps SIEM UI. Just add an exclusion targeting the `ClientAppId` of **Outlook Mobile** (`27922004-5251-4030-b22d-91ecd9a37ea4`) and your authorized backup applications (e.g., Keepit). This immediately stops the false positive flood while keeping Google's curated rules active.
+
+**Option 2: Deploy Custom Rules (architectural fix)**
+If you want to completely fix the underlying grouping logic flaws, you must disable the Curated Detections and deploy Custom Rules. The fixes involve:
 1. Explicitly whitelisting Outlook Mobile (`27922004-...`).
 2. Whitelisting known authorized Enterprise Backup Apps (e.g., Keepit).
 3. Fixing the `match` sections to properly aggregate by session.
@@ -99,6 +106,7 @@ rule custom_o365_mailbox_access_service_principal_anomalies {
     $e and$source_ua_dc >= 2
 }
 
+
 ```
 
 #### Tuned Rule 2: Multiple Mailboxes Accessed
@@ -108,6 +116,10 @@ rule custom_o365_mailbox_access_service_principal_anomalies {
 #### Tuned Rule 3: Multiple ASNs
 
 *(Unlike the User Agents rule, Google actually managed to group by `$session_id` correctly in this one. However, it still lacks the Outlook Mobile exclusion. Follow the same exclusion logic as above, keeping the condition on `$source_asn_dc >= 2`).*
+
+#### Tuned Rule 4: Multiple Mailboxes Accessed via Microsoft Graph API
+
+*(Similar to the other rules, this Graph API-specific detection fails to account for legitimate authorized Enterprise Backup Applications that leverage the Graph API to back up multiple mailboxes. To fix this, append your authorized backup app IDs (e.g., Keepit `a7cd46df-...`) to the exclusion regex at the end of the `events` block).*
 
 ---
 
@@ -125,6 +137,7 @@ This UEBA rule attempts to detect anomalous authentication spikes by calculating
 * **Code Flaw:** Google declares a variable `$num_stddevs_away = max(2)` at the beginning of the outcome block. However, in the `$historical_threshold` calculation, **the Google developer hardcoded the value `2` instead of using the variable**. This programming error prevents analysts from easily overriding the sensitivity via the UI or inherited variables without completely cloning and rewriting the YARA-L logic.
 
 ### ✅ UEBA Tuning Recommendations
+
 Real-world testing shows that simply tweaking statistical thresholds (e.g., raising `$num_stddevs_away` to 3 or 4, lowering `$coefficient_of_variation_threshold` from `0.1` to `0.05`, or increasing `$observation_threshold` to 15) is insufficient: it drops counts from 710 to 111 weekly alerts, which remains excessively noisy for an analyst team.
 
 * **Recommended Approach:** For SecOps enterprise tenants, **disable the `Broad` ruleset alerting** for "Failed Authentications by Device" and rely strictly on the `Precise` alerting channel. This structural mitigation is the only effective way to stop the alert flood.
@@ -133,4 +146,3 @@ Real-world testing shows that simply tweaking statistical thresholds (e.g., rais
 ---
 
 *Disclaimer: These tunings are based on real-world incident response and SIEM engineering experience. Always test YARA-L rules in your specific environment before deploying them to production.*
-
