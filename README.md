@@ -85,11 +85,11 @@ rule custom_ttp_o365_mailbox_access_by_service_principal_with_multiple_uas {
     $e.principal.user.userid !=$e.target.user.userid
     
     ( 
-      $e.network.http.user_agent = /AppId/ nocase or$e.additional.fields["ClientAppId"] = /./
+      $e.network.http.user_agent = /AppId/ nocase or $e.additional.fields["ClientAppId"] = /./
     )
     
     // EXCLUSIONS: Added Outlook Mobile + Standard Google Exclusions
-    $e.additional.fields["ClientAppId"] != /^(27922004-5251-4030-b22d-91ecd9a37ea4\vert{}bea75f7a-2505-46e8-9bf6-d3f7da9c9da7\vert{}b52893c8-bc2e-47fc-918b-77022b299bbc\vert{}...)$/ nocase
+    $e.additional.fields["ClientAppId"] != /^(27922004-5251-4030-b22d-91ecd9a37ea4|bea75f7a-2505-46e8-9bf6-d3f7da9c9da7|b52893c8-bc2e-47fc-918b-77022b299bbc|...)$/ nocase
 
   match:
     // Group by both App AND Session to isolate the specific token lifecycle
