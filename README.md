@@ -64,7 +64,7 @@ If you want to completely fix the underlying grouping logic flaws (such as the `
 2. Whitelisting known authorized Enterprise Backup Apps (e.g., Keepit).
 3. Fixing the `match` sections to properly aggregate by session.
 
-#### Tuned Rule 1: Multiple User Agents
+##### Tuned Rule 1: Multiple User Agents
 ```yara
 rule custom_o365_mailbox_access_service_principal_anomalies {
   meta:
@@ -109,15 +109,15 @@ rule custom_o365_mailbox_access_service_principal_anomalies {
 
 ```
 
-#### Tuned Rule 2: Multiple Mailboxes Accessed
+##### Tuned Rule 2: Multiple Mailboxes Accessed
 
 *(Same logic, but in the exclusions ensure you whitelist your authorized backup solutions like Keepit (`a7cd46df...`) alongside Outlook Mobile).*
 
-#### Tuned Rule 3: Multiple ASNs
+##### Tuned Rule 3: Multiple ASNs
 
 *(Unlike the User Agents rule, Google actually managed to group by `$session_id` correctly in this one. However, it still lacks the Outlook Mobile exclusion. Follow the same exclusion logic as above, keeping the condition on `$source_asn_dc >= 2`).*
 
-#### Tuned Rule 4: Multiple Mailboxes Accessed via Microsoft Graph API
+##### Tuned Rule 4: Multiple Mailboxes Accessed via Microsoft Graph API
 *(Same logic. Ensure you append authorized backup applications like Keepit (`a7cd46df...`) to the exclusion regex at the end of the `events` block).*
 
 ---
