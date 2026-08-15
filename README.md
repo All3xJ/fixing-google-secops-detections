@@ -1,9 +1,10 @@
-
 # Google SecOps (Chronicle) Curated Detections: Flaw Analysis & Tuning
 
-This repository documents **actual code bugs, logic errors, and tuning strategies** for native **Google SecOps (Chronicle) Curated Detections**.
-While Google Threat Intelligence (GTIG) provides exceptional conceptual threat coverage (such as tracking APT29/BRICKSTORM campaigns), raw YARA-L implementations of curated rules sometimes suffer from genuine implementation bugs, such as grouping logic contradictions and hardcoded threshold variables. In real-world enterprise environments, this frequently leads to massive alert fatigue.
-This project analyzes *why* native rules break or flood the SOC, and shares optimized Custom Rules and patches to fix these bugs.
+This repository documents **architectural design flaws, logic discrepancies, and tuning strategies** for native **Google SecOps (Chronicle) Curated Detections**. 
+
+While Google Threat Intelligence (GTIG) provides exceptional conceptual threat coverage (such as tracking APT29/BRICKSTORM campaigns), raw YARA-L implementations of curated rules sometimes suffer from implementation oversights, such as grouping logic contradictions and hardcoded threshold variables. In real-world enterprise environments, this frequently leads to massive alert fatigue.
+
+This project analyzes *why* native rules break or flood the SOC, and shares optimized Custom Rules and patches to resolve these issues.
 
 ---
 
@@ -49,7 +50,7 @@ To identify backend service accounts, Google's logic relies on this condition:
 
 ### ✅ Tuned YARA-L Solutions for O365 Rules
 
-To fix these severe design flaws, you have two options depending on your operational needs:
+To fix these design flaws, you have two options depending on your operational needs:
 
 **Option 1: Native SIEM Exclusions (Quick Fix)**
 You do not necessarily have to disable the rules or write custom code. You can simply create an **Exclusion** directly within the Google SecOps SIEM UI. Just add an exclusion targeting the `ClientAppId` of **Outlook Mobile** (`27922004-5251-4030-b22d-91ecd9a37ea4`) and your authorized backup applications (e.g., Keepit). This immediately stops the false positive flood while keeping Google's curated rules active.
