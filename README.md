@@ -1,3 +1,4 @@
+
 # Google SecOps (Chronicle) Curated Detections: Flaw Analysis & Tuning
 
 This repository documents architectural flaws, systemic logic errors, and tuning recommendations for native **Google SecOps (Chronicle) Curated Detections**. 
@@ -9,10 +10,10 @@ This project provides a technical breakdown of *why* certain rules fail in produ
 ---
 
 ## 📑 Table of Contents
-1. [O365 Suite Alerting Failure for BRICKSTORM / APT29](#1-o365-suite-failures-for-brickstorm--apt29)
-    - [Flaw 1: The "Outlook Mobile" Public Client Oversight](#flaw-1-the-outlook-mobile-public-client-oversight)
-    - [Flaw 2: The Shared Mailbox Collision](#flaw-2-the-shared-mailbox-collision)
-    - [Flaw 3: Grouping Logic Errors](#flaw-3-grouping-logic-errors)
+1. [O365 Suite Alerting Failure for BRICKSTORM / APT29](#1-o365-suite-alerting-failure-for-brickstorm--apt29)
+    - [Flaw 1: Grouping Logic Contradiction](#flaw-1-grouping-logic-contradiction)
+    - [Flaw 2: Outlook Mobile Public Client Oversight](#flaw-2-outlook-mobile-public-client-oversight)
+    - [Flaw 3: Shared Mailbox Collision](#flaw-3-shared-mailbox-collision)
     - [Tuned YARA-L Solutions](#tuned-yara-l-solutions-for-o365-rules)
 2. [UEBA: Anomalous Auth Attempts Total](#2-ueba-anomalous-auth-attempts-total)
     - [Hardcoding Flaw & Alert Fatigue](#hardcoding-flaw--alert-fatigue)
@@ -20,7 +21,7 @@ This project provides a technical breakdown of *why* certain rules fail in produ
 
 ---
 
-## 1. O365 Suite for BRICKSTORM / APT29
+## 1. O365 Suite Alerting Failure for BRICKSTORM / APT29
 
 Google released a suite of rules to detect bulk email exfiltration from Microsoft 365 Exchange Online by compromised Service Principals ([techniques heavily used by APT29/Midnight Blizzard](https://cloud.google.com/blog/topics/threat-intelligence/brickstorm-espionage-campaign)). 
 
@@ -32,21 +33,21 @@ The affected curated rules are:
 
 ### ❌ Core Flaws in Google's Logic
 
-Google completely missed the mark on this entire suite of rules. They copy-pasted a fundamentally flawed logic across all three detections, resulting in rules that trigger on standard employee behavior rather than actual threat actors.
+Google completely missed the mark on this entire suite of rules. They copy-pasted a fundamentally flawed logic across the detections, resulting in rules that trigger on standard employee behavior rather than actual threat actors.
 
-#### Flaw 1: "Outlook Mobile" Public Client Oversight (biggest blunder)
+#### Flaw 1: Grouping Logic Contradiction (Biggest Logic Flaw)
+Despite the rule description explicitly stating: *"Detects a Service Principal with a single O365 session ID..."*, the YARA-L `match` section of the "Multiple User Agents" rule inexplicably groups by `$application_id` instead of the session ID (`$session_id`). It completely contradicts its own stated objective, aggregating unrelated human logins over a 3-hour window simply because they use the same application. This is a fundamental logic mismatch.
+
+#### Flaw 2: Outlook Mobile Public Client Oversight (Biggest Oversight)
 All three rules look for anomalous behavior (changing IPs, changing ASNs, changing User-Agents) tied to a specific `ClientAppId`. However, Google inexplicably failed to whitelist the official **Microsoft Outlook Mobile App** (`27922004-5251-4030-b22d-91ecd9a37ea4`).
 
 * **Technical Reality:** Outlook Mobile is a **Public Client** relying on Delegated Access (human credentials + MFA). Threat actors aiming for silent, automated bulk exfiltration require **Confidential Clients** (App-Only mode with secrets/certificates). 
 * **Impact:** Without excluding Outlook Mobile, a legitimate employee reading a shared mailbox on their iPhone, who then walks out of the office (switching from Corporate Wi-Fi to 4G Cellular), triggers the `Multiple ASNs` and `Multiple IPs` alerts. Different employees using iOS and Android to read the same departmental mailbox trigger the `Multiple User Agents` alert. 
 
-#### Flaw 2: Shared Mailbox Collision
+#### Flaw 3: Shared Mailbox Collision
 To identify "Service Principals", Google's code relies on this logic:
 `$e.principal.user.userid != $e.target.user.userid`
 * **Impact:** This condition simply checks if the actor is different from the mailbox owner. While true for backend apps, it is also perfectly true for **human employees accessing delegated/shared departmental mailboxes**. This generates massive noise on standard human traffic.
-
-#### Flaw 3: Grouping Logic Errors (In the 'Multiple User Agents' rule)
-Despite the rule description explicitly stating: *"Detects a Service Principal with a single O365 session ID..."*, the YARA-L `match` section of the "Multiple User Agents" rule groups by `$application_id` instead of the session ID (`$session_id`), aggregating unrelated human logins over a 3-hour window.
 
 ---
 
@@ -54,11 +55,11 @@ Despite the rule description explicitly stating: *"Detects a Service Principal w
 
 To fix these severe design flaws, you have two options depending on your operational needs:
 
-**Option 1: Native SIEM Exclusions (quick fix)**
+**Option 1: Native SIEM Exclusions (Quick Fix)**
 You do not necessarily have to disable the rules or write custom code. You can simply create an **Exclusion** directly within the Google SecOps SIEM UI. Just add an exclusion targeting the `ClientAppId` of **Outlook Mobile** (`27922004-5251-4030-b22d-91ecd9a37ea4`) and your authorized backup applications (e.g., Keepit). This immediately stops the false positive flood while keeping Google's curated rules active.
 
-**Option 2: Deploy Custom Rules (architectural fix)**
-If you want to completely fix the underlying grouping logic flaws, you must disable the Curated Detections and deploy Custom Rules. The fixes involve:
+**Option 2: Deploy Custom Rules (Architectural Fix)**
+If you want to completely fix the underlying grouping logic flaws (such as the `$application_id` mismatch), you must disable the Curated Detections and deploy Custom Rules. The fixes involve:
 1. Explicitly whitelisting Outlook Mobile (`27922004-...`).
 2. Whitelisting known authorized Enterprise Backup Apps (e.g., Keepit).
 3. Fixing the `match` sections to properly aggregate by session.
@@ -106,20 +107,18 @@ rule custom_o365_mailbox_access_service_principal_anomalies {
     $e and$source_ua_dc >= 2
 }
 
-
 ```
 
 #### Tuned Rule 2: Multiple Mailboxes Accessed
 
-*(Same logic, but in the exclusions ensure you whitelist your authorized backup solutions like Keepit (`a7cd46df...`) alongside Outlook Mobile, and keep the condition on `$mailboxes_accessed >= 2`).*
+*(Same logic, but in the exclusions ensure you whitelist your authorized backup solutions like Keepit (`a7cd46df...`) alongside Outlook Mobile).*
 
 #### Tuned Rule 3: Multiple ASNs
 
 *(Unlike the User Agents rule, Google actually managed to group by `$session_id` correctly in this one. However, it still lacks the Outlook Mobile exclusion. Follow the same exclusion logic as above, keeping the condition on `$source_asn_dc >= 2`).*
 
 #### Tuned Rule 4: Multiple Mailboxes Accessed via Microsoft Graph API
-
-*(Similar to the other rules, this Graph API-specific detection fails to account for legitimate authorized Enterprise Backup Applications that leverage the Graph API to back up multiple mailboxes. To fix this, append your authorized backup app IDs (e.g., Keepit `a7cd46df-...`) to the exclusion regex at the end of the `events` block).*
+*(Same logic. Ensure you append authorized backup applications like Keepit (`a7cd46df...`) to the exclusion regex at the end of the `events` block).*
 
 ---
 
