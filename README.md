@@ -66,11 +66,11 @@ If you want to completely fix the underlying grouping logic flaws (such as the `
 
 ##### Tuned Rule 1: Multiple User Agents
 ```yara
-rule custom_o365_mailbox_access_service_principal_anomalies {
+rule custom_ttp_o365_mailbox_access_by_service_principal_with_multiple_uas {
   meta:
-    rule_name = "Custom - O365 Mailbox Access by Service Principal with Anomalous Session Activity"
-    description = "Detects a Service Principal with a single O365 session ID accessing mailboxes with multiple user agents. Tuned to exclude Outlook Mobile (Public Client) human traffic."
-    severity = "Medium"
+    rule_name = "[CUSTOM] O365 Mailbox Access by Service Principal with Multiple User Agents"
+    description = "Detects a Service Principal with a single O365 session ID accessing O365 mailboxes with multiple user agents. Tuned to fix grouping logic and exclude Outlook Mobile (Public Client) human traffic."
+    severity = "Low"
     tactic = "TA0009"
     technique = "T1114.002"
 
@@ -80,8 +80,9 @@ rule custom_o365_mailbox_access_service_principal_anomalies {
     $e.target.application = "Exchange"
     $e.security_result.detection_fields["RecordType"] = /^(2\vert{}50)$/ 
     
-    // Extract actual Session ID
-    $session_id =$e.network.session_id
+    // Extract actual Session ID and App ID
+    $session_id = $e.network.session_id
+    $application_id = $e.additional.fields["ClientAppId"]
     
     $e.principal.user.userid !=$e.target.user.userid
     
