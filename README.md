@@ -178,7 +178,13 @@ The rule enforces `match: $principal_userid over 1h`, grouping alerts by the rec
 
 ### ✅ Tuned YARA-L Solution for Teams Impersonation
 
-This custom rule keeps the original schema intact, modifying only the sender extraction, the match grouping key, and the adversary outcome field.
+**Option 1: Alert Profile Adjustment (Quick Fix)**
+
+A straightforward operational fix is to **disable alerting on the `Broad` ruleset** for this curated detection and keep strictly the **`Precise`** channel enabled. This prevents benign cross-tenant or unconfirmed impersonation events from flooding the analyst queue without requiring custom rule deployments.
+
+**Option 2: Deploy Custom Rule (Architectural Fix)**
+
+This custom rule keeps the original schema intact, modifying only the sender extraction, the match grouping key, and the adversary outcome field:
 
 ```yara
 rule custom_ttp_o365_teams_external_impersonation_attempt {
